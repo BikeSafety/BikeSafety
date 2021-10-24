@@ -28,12 +28,9 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 HAL_I2C_StateTypeDef i2cState;		// State of i2c
-HAL_StatusTypeDef i2cStatus;		// Status of i2c
-
-HAL_StatusTypeDef spiStatus;		// Status of spi
-
+HAL_StatusTypeDef i2cStatus;		  // Status of i2c
+HAL_StatusTypeDef spiStatus;		  // Status of spi
 I2C_HandleTypeDef hi2c1;
-
 SPI_HandleTypeDef hspi1;
 
 /* USER CODE END PTD */
@@ -49,9 +46,7 @@ SPI_HandleTypeDef hspi1;
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
-
 SPI_HandleTypeDef hspi1;
-
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
@@ -61,12 +56,12 @@ uint32_t counter2 = 0;
 
 //***************************MPU9250
 // Registers
-uint8_t IMUDevAddr 					= 208;
-uint8_t PWR_MGMT_1[2] 				= {107, 32/*or 4*/};
-uint8_t PWR_MGMT_2[2] 				= {108, 0/*0 to enable all or 255 to disable all*/};
-uint8_t WHO_AM_I[1] 				= {117};
-uint8_t LP_ACCEL_ODR[2] 			= {30, 8/* 8 = output frequency 62.50Hz*/};
-uint8_t ACCEL_CONFIG[2] 			= {28, 24/*8 for 2g, 24 for 16g*/};
+uint8_t IMUDevAddr 					        = 208;
+uint8_t PWR_MGMT_1[2] 				      = {107, 32/*or 4*/};
+uint8_t PWR_MGMT_2[2] 				      = {108, 0/*0 to enable all or 255 to disable all*/};
+uint8_t WHO_AM_I[1] 				        = {117};
+uint8_t LP_ACCEL_ODR[2] 			      = {30, 8/* 8 = output frequency 62.50Hz*/};
+uint8_t ACCEL_CONFIG[2] 			      = {28, 24/*8 for 2g, 24 for 16g*/};
 uint8_t dataReceiveI2cBufferLow[1] 	= {0};
 uint8_t dataReceiveI2cBufferHigh[1] = {0};
 uint8_t ACCEL_XOUT_L[1] 			= {60};
@@ -195,7 +190,6 @@ int main(void)
 
   while (1)
   {
-	  //break;
 	  i2cState = HAL_I2C_GetState(&hi2c1);
 	  /*
 	  for(uint16_t i = 0; i < 256; i++)
@@ -234,12 +228,14 @@ int main(void)
 	  finalZAccValue = finalZAccValue + dataReceiveI2cBufferLow[0];
 	  finalZAccValueWithOffset = finalZAccValue + 88000;
 
+    /*
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
-	  //HAL_Delay(500);
+	  HAL_Delay(500);
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
-	  //HAL_Delay(500);
+	  HAL_Delay(500);
+    */
 
-	  //****************************RFID
+	  //****************************RFID BEGIN
 
 	  /*
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
@@ -291,7 +287,7 @@ int main(void)
 
 	  //HAL_SPI_Transmit(hspi, pData, Size, Timeout)
 
-	  //****************************RFID
+	  //****************************RFID END
 	  counter = counter +1;
     /* USER CODE END WHILE */
 
