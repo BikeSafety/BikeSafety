@@ -28,10 +28,9 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 HAL_I2C_StateTypeDef i2cState;		// State of i2c
-HAL_StatusTypeDef i2cStatus;		  // Status of i2c
-HAL_StatusTypeDef spiStatus;		  // Status of spi
-I2C_HandleTypeDef hi2c1;
-SPI_HandleTypeDef hspi1;
+HAL_StatusTypeDef i2cStatus;		// Status of i2c
+HAL_StatusTypeDef spiStatus;		// Status of spi
+HAL_StatusTypeDef uartStatus;		// Status of uart
 
 /* USER CODE END PTD */
 
@@ -56,12 +55,12 @@ uint32_t counter2 = 0;
 
 //***************************MPU9250
 // Registers
-uint8_t IMUDevAddr 					        = 208;
-uint8_t PWR_MGMT_1[2] 				      = {107, 32/*or 4*/};
-uint8_t PWR_MGMT_2[2] 				      = {108, 0/*0 to enable all or 255 to disable all*/};
-uint8_t WHO_AM_I[1] 				        = {117};
-uint8_t LP_ACCEL_ODR[2] 			      = {30, 8/* 8 = output frequency 62.50Hz*/};
-uint8_t ACCEL_CONFIG[2] 			      = {28, 24/*8 for 2g, 24 for 16g*/};
+uint8_t IMUDevAddr 					= 208;
+uint8_t PWR_MGMT_1[2] 				= {107, 32/*or 4*/};
+uint8_t PWR_MGMT_2[2] 				= {108, 0/*0 to enable all or 255 to disable all*/};
+uint8_t WHO_AM_I[1] 				= {117};
+uint8_t LP_ACCEL_ODR[2] 			= {30, 8/* 8 = output frequency 62.50Hz*/};
+uint8_t ACCEL_CONFIG[2] 			= {28, 8/*8 for 2g, 24 for 16g*/};
 uint8_t dataReceiveI2cBufferLow[1] 	= {0};
 uint8_t dataReceiveI2cBufferHigh[1] = {0};
 uint8_t ACCEL_XOUT_L[1] 			= {60};
@@ -72,14 +71,12 @@ uint8_t ACCEL_ZOUT_L[1] 			= {64};
 uint8_t ACCEL_ZOUT_H[1] 			= {63};
 
 // Variables
-uint64_t finalXAccValue 			= 0;
-uint64_t finalXAccValueWithOffset 	= 0;
-uint64_t finalYAccValue 			= 0;
-uint64_t finalYAccValueWithOffset 	= 0;
-uint64_t finalZAccValue 			= 0;
-uint64_t finalZAccValueWithOffset 	= 0;
-
-uint8_t readXAccReg = 60;
+uint32_t finalXAccValue 			= 0;
+uint32_t finalXAccValueWithOffset 	= 0;
+uint32_t finalYAccValue 			= 0;
+uint32_t finalYAccValueWithOffset 	= 0;
+uint32_t finalZAccValue 			= 0;
+uint32_t finalZAccValueWithOffset 	= 0;
 //***************************MPU9250
 
 //***************************RFID
@@ -93,9 +90,11 @@ uint8_t CommandReg[1] = {130}; 									// Read CommandReg
 uint8_t CommandRegWriteActivateReceive[2] = {2, 8}; 			// Write activate Receive
 uint8_t CommandRegWriteStopReceiver[2] = {2, 0}; 				// Write activate Receive
 uint8_t CommandRegWriteGenerateRndmID[2] = {2, 2}; 				// Write Generate rndm ID
+*/
 
 uint8_t receiveSPIData[64] = {0};
-*/
+uint8_t receiveUARTData[14] = {0};
+
 //***************************RFID
 
 /* USER CODE END PV */
@@ -148,24 +147,24 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, PWR_MGMT_1, (uint8_t)2, 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 1000);
+  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, PWR_MGMT_1, 2, 10);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, 1, 1000);
 
   HAL_Delay(10);
-  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, PWR_MGMT_2, (uint8_t)2, 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 1000);
+  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, PWR_MGMT_2, 2, 10);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, 1, 1000);
 
   HAL_Delay(10);
-  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, WHO_AM_I, (uint8_t)1, 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 1000);
+  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, WHO_AM_I, 1, 10);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, 1, 1000);
 
   HAL_Delay(10);
-  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, LP_ACCEL_ODR, (uint8_t)2, 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 1000);
+  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, LP_ACCEL_ODR, 2, 10);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, 1, 1000);
 
   HAL_Delay(10);
-  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_CONFIG, (uint8_t)2, 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 1000);
+  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_CONFIG, 2, 10);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, 1, 1000);
 
 
   //****************************RFID
@@ -190,6 +189,7 @@ int main(void)
 
   while (1)
   {
+	  //break;
 	  i2cState = HAL_I2C_GetState(&hi2c1);
 	  /*
 	  for(uint16_t i = 0; i < 256; i++)
@@ -228,14 +228,13 @@ int main(void)
 	  finalZAccValue = finalZAccValue + dataReceiveI2cBufferLow[0];
 	  finalZAccValueWithOffset = finalZAccValue + 88000;
 
-    /*
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
-	  HAL_Delay(500);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
-	  HAL_Delay(500);
-    */
+	  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
+	  //HAL_Delay(500);
+	  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+	  //HAL_Delay(500);
 
-	  //****************************RFID BEGIN
+	  //****************************RFID
+	  uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 1000);
 
 	  /*
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
@@ -287,7 +286,7 @@ int main(void)
 
 	  //HAL_SPI_Transmit(hspi, pData, Size, Timeout)
 
-	  //****************************RFID END
+	  //****************************RFID
 	  counter = counter +1;
     /* USER CODE END WHILE */
 
