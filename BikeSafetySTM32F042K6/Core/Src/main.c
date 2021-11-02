@@ -31,6 +31,7 @@ HAL_I2C_StateTypeDef i2cState;		// State of i2c
 HAL_StatusTypeDef i2cStatus;		// Status of i2c
 HAL_StatusTypeDef spiStatus;		// Status of spi
 HAL_StatusTypeDef uartStatus;		// Status of uart
+HAL_StatusTypeDef uart2Status;		// Status of uart
 
 /* USER CODE END PTD */
 
@@ -45,8 +46,11 @@ HAL_StatusTypeDef uartStatus;		// Status of uart
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
+
 SPI_HandleTypeDef hspi1;
+
 UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
@@ -60,7 +64,7 @@ uint8_t PWR_MGMT_1[2] 				= {107, 32/*or 4*/};
 uint8_t PWR_MGMT_2[2] 				= {108, 0/*0 to enable all or 255 to disable all*/};
 uint8_t WHO_AM_I[1] 				= {117};
 uint8_t LP_ACCEL_ODR[2] 			= {30, 8/* 8 = output frequency 62.50Hz*/};
-uint8_t ACCEL_CONFIG[2] 			= {28, 8/*8 for 2g, 24 for 16g*/};
+uint8_t ACCEL_CONFIG[2] 			= {28, 8/*x for 2g, 24 for 16g*/}; // 00001000
 uint8_t dataReceiveI2cBufferLow[1] 	= {0};
 uint8_t dataReceiveI2cBufferHigh[1] = {0};
 uint8_t ACCEL_XOUT_L[1] 			= {60};
@@ -80,22 +84,36 @@ uint32_t finalZAccValueWithOffset 	= 0;
 //***************************MPU9250
 
 //***************************RFID
-/*
-uint8_t VersionReg[1] = {238};									// Should give d146
-uint8_t Status1Reg[1] = {142};									//
-uint8_t FIFODataReg[1] = {146};									// Read
-uint8_t FIFOLevelReg[1] = {148};								// Read
-uint8_t FIFOLevelRegFlush[2] = {20, 128};						// FiFo flush
-uint8_t CommandReg[1] = {130}; 									// Read CommandReg
-uint8_t CommandRegWriteActivateReceive[2] = {2, 8}; 			// Write activate Receive
-uint8_t CommandRegWriteStopReceiver[2] = {2, 0}; 				// Write activate Receive
-uint8_t CommandRegWriteGenerateRndmID[2] = {2, 2}; 				// Write Generate rndm ID
-*/
-
-uint8_t receiveSPIData[64] = {0};
-uint8_t receiveUARTData[14] = {0};
-
+uint8_t receiveUARTData[30] = {0};
 //***************************RFID
+
+//***************************GSM&GNSS
+/*
+ *	Modem power must be from Battery Connector 4.0V
+ *	UART VCC must be 3V3 (5V does not work)
+ *
+ */
+uint8_t AT[] = "AT\r";
+uint8_t ATI[] = "ATI\r";
+uint8_t AT_CFUN[] = "AT+CFUN=1\r";							// Full Functionality Configuration
+uint8_t AT_COPS_OPCHK[] = "AT+COPS=?\r";					// Returns all operators available
+uint8_t AT_COPS_CRNT[] = "AT+COPS?\r";						// Returns current operator
+uint8_t AT_COPS_RGSTR[] = "AT+COPS=0\r";					// Register to operator network AT+COPS=<mode>,[<format>[,<oper>]]
+uint8_t AT_CMGF[] = "AT+CMGF=1\r";							// Set to text mode
+uint8_t AT_CSCS[] = "AT+CSCS=\"GSM\"\r";					// Set character
+uint8_t AT_CMGS_SEND_MSG_BUF[] = "AT+CMGS=\"+358443500786\"\rTesting7";
+uint8_t AT_CMGS_SEND_CTRLZ[] = "\x1a";
+uint8_t AT_CSQ[] = "AT+CSQ\r";								// Get Signal Strength in dBm
+uint8_t AT_CPOWD[] = "AT+CPOWD=1\r";						// Power OFF Modem
+
+
+uint8_t AT_CGNSPWR_ON[] 	= "AT+CGNSPWR=1\r";				// GNSS turns Power ON
+uint8_t AT_CGNSPWR_OFF[] 	= "AT+CGNSPWR=0\r";				// GNSS turns Power OFF
+uint8_t AT_CGNSSEQ[] 		= "AT+CGNSSEQ=\"GGA\"\r";		// RMC for GGA
+uint8_t AT_CGNSINF[] 		= "AT+CGNSINF\r";				// Gets data from GNSS
+
+uint8_t receiveUART2Data[150] = {0};
+//***************************GSM&GNSS
 
 /* USER CODE END PV */
 
@@ -105,6 +123,7 @@ static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -145,7 +164,60 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  /*
+  /////////////////////GSM
+  uart2Status = HAL_UART_Transmit(&huart2, AT_COPS_RGSTR, sizeof(AT_COPS_RGSTR), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(10);
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_COPS_CRNT, sizeof(AT_COPS_CRNT), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(5000);
+
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CMGF, sizeof(AT_CMGF), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(10);
+  memset(receiveUART2Data, '0', sizeof(receiveUART2Data));
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CSCS, sizeof(AT_CSCS), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(10);
+  memset(receiveUART2Data, '0', sizeof(receiveUART2Data));
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CMGS_SEND_MSG_BUF, sizeof(AT_CMGS_SEND_MSG_BUF), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(10);
+  memset(receiveUART2Data, '0', sizeof(receiveUART2Data));
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CMGS_SEND_CTRLZ, sizeof(AT_CMGS_SEND_CTRLZ), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(10);
+  /////////////////////GSM
+  */
+
+
+  /////////////////////GNSS
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSPWR_OFF, sizeof(AT_CGNSPWR_OFF), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(3000);
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSPWR_ON, sizeof(AT_CGNSPWR_ON), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(3000);
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSSEQ, sizeof(AT_CGNSSEQ), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(3000);
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(3000);
+  /////////////////////GNSS
+
 
   i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, PWR_MGMT_1, 2, 10);
   i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, 1, 1000);
@@ -166,20 +238,6 @@ int main(void)
   i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_CONFIG, 2, 10);
   i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, 1, 1000);
 
-
-  //****************************RFID
-  /*
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
-  HAL_Delay(100);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); 	// RFID reset
-  HAL_Delay(100);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
-  //spiStatus = HAL_SPI_TransmitReceive(&hspi1, VersionReg, receiveSPIData, 1, 1000);
-  //spiStatus = HAL_SPI_Transmit(&hspi1, VersionReg, (uint8_t)1, 100);
-  //spiStatus = HAL_SPI_Receive(&hspi1, &receiveSPIData, (uint8_t)1, 1000);
-  //spiStatus = HAL_SPI_Receive(&hspi1, receiveSPIData[1], (uint8_t)1, 1000);
-  */
-  //****************************RFID
 
   /* USER CODE END 2 */
 
@@ -205,88 +263,46 @@ int main(void)
 	  }
 	  */
 	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_XOUT_L, (uint8_t)1, 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 1000);
+	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 100);
 	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_XOUT_H, (uint8_t)1, 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferHigh, (uint8_t)1, 1000);
+	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferHigh, (uint8_t)1, 100);
 	  finalXAccValue = dataReceiveI2cBufferHigh[0] << 8;
 	  finalXAccValue = finalXAccValue + dataReceiveI2cBufferLow[0];
 	  finalXAccValueWithOffset = finalXAccValue + 40000;
 
 	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_YOUT_L, (uint8_t)1, 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 1000);
+	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 100);
 	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_YOUT_H, (uint8_t)1, 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferHigh, (uint8_t)1, 1000);
+	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferHigh, (uint8_t)1, 100);
 	  finalYAccValue = dataReceiveI2cBufferHigh[0] << 8;
 	  finalYAccValue = finalYAccValue + dataReceiveI2cBufferLow[0];
 	  finalYAccValueWithOffset = finalYAccValue + 40000;
 
 	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_ZOUT_L, (uint8_t)1, 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 1000);
+	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferLow, (uint8_t)1, 100);
 	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_ZOUT_H, (uint8_t)1, 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferHigh, (uint8_t)1, 1000);
+	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, dataReceiveI2cBufferHigh, (uint8_t)1, 100);
 	  finalZAccValue = dataReceiveI2cBufferHigh[0] << 8;
 	  finalZAccValue = finalZAccValue + dataReceiveI2cBufferLow[0];
 	  finalZAccValueWithOffset = finalZAccValue + 88000;
-
-	  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
-	  //HAL_Delay(500);
-	  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
-	  //HAL_Delay(500);
-
+/*
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+	  HAL_Delay(500);
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+	  HAL_Delay(500);
+*/
 	  //****************************RFID
-	  uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 1000);
-
-	  /*
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	  HAL_Delay(100);
-	  spiStatus = HAL_SPI_Transmit(&hspi1, VersionReg, 1, 100);
-	  spiStatus = HAL_SPI_Receive(&hspi1, receiveSPIData, 1, 1000);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	  HAL_Delay(1000);
-
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	  HAL_Delay(100);
-	  spiStatus = HAL_SPI_Transmit(&hspi1, Status1Reg, 1, 100);
-	  spiStatus = HAL_SPI_Receive(&hspi1, receiveSPIData, 1, 1000);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	  HAL_Delay(1000);
-
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	  HAL_Delay(100);
-	  spiStatus = HAL_SPI_Transmit(&hspi1, FIFOLevelRegFlush, 2, 100);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	  HAL_Delay(10);
-
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	  HAL_Delay(10);
-	  spiStatus = HAL_SPI_Transmit(&hspi1, CommandRegWriteActivateReceive, 2, 100);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	  HAL_Delay(10);
-
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	  spiStatus = HAL_SPI_Transmit(&hspi1, CommandRegWriteStopReceiver, 2, 100);
-	  HAL_Delay(100);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	  HAL_Delay(100);
-
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	  spiStatus = HAL_SPI_Transmit(&hspi1, FIFODataReg, 1, 100);
-	  spiStatus = HAL_SPI_Receive(&hspi1, receiveSPIData, 64, 1000);
-	  HAL_Delay(10);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	  HAL_Delay(10);
-
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	  spiStatus = HAL_SPI_Transmit(&hspi1, FIFODataReg, 1, 100);
-	  spiStatus = HAL_SPI_Receive(&hspi1, receiveSPIData, 64, 1000);
-	  HAL_Delay(10);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	  HAL_Delay(10);
-	  */
-
-	  //HAL_SPI_Transmit(hspi, pData, Size, Timeout)
-
+	  //uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
 	  //****************************RFID
+
+	  //****************************GNSS
+
+	  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
+	  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+	  HAL_Delay(8000);
+
+	  //****************************GNSS
+
 	  counter = counter +1;
     /* USER CODE END WHILE */
 
@@ -462,6 +478,41 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -473,16 +524,27 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_3|GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PA0 PA3 PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_3|GPIO_PIN_4;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PA0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
