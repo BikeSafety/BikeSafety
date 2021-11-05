@@ -123,7 +123,7 @@ int main(void)
 	uint8_t AT_CSQ[] 				= "AT+CSQ\r";				// Get Signal Strength in dBm
 	uint8_t AT_CPOWD[] 				= "AT+CPOWD=1\r";			// Power OFF Modem
 	uint8_t AT_CMGS_SEND_CTRLZ[] 	= "\x1a";					// Send Control
-	uint8_t AT_CMGS_SEND_MSG_BUF[] 	= "AT+CMGS=\"+358443500786\"\rTesting9";
+	uint8_t AT_CMGS_SEND_MSG_BUF[] 	= "AT+CMGS=\"+358443xxxxxx\"\rTesting9";
 	//=========================GSM
 
 	//=========================GNSS
