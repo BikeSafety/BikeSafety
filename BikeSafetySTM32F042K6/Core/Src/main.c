@@ -123,7 +123,7 @@ int main(void)
 	uint8_t AT_CSQ[] 				= "AT+CSQ\r";				// Get Signal Strength in dBm
 	uint8_t AT_CPOWD[] 				= "AT+CPOWD=1\r";			// Power OFF Modem
 	uint8_t AT_CMGS_SEND_CTRLZ[] 	= "\x1a";					// Send Control
-	uint8_t AT_CMGS_SEND_MSG_BUF[] 	= "AT+CMGS=\"+358443xxxxxx\"\rTesting9";
+	uint8_t AT_CMGS_SEND_MSG_BUF[] 	= "AT+CMGS=\"+35844350xxxx\"\rTesting11";
 	//=========================GSM
 
 	//=========================GNSS
@@ -131,7 +131,8 @@ int main(void)
 	uint8_t AT_CGNSPWR_OFF[] 	= "AT+CGNSPWR=0\r";				// GNSS turns Power OFF
 	uint8_t AT_CGNSSEQ[] 		= "AT+CGNSSEQ=\"RMC\"\r";		// RMC for GGA
 	uint8_t AT_CGNSINF[] 		= "AT+CGNSINF\r";				// Gets data from GNSS
-	uint8_t AT_CGNSURC[] 		= "AT+CGNSURC=1\r";
+	uint8_t AT_CGNSURC_SET[] 	= "AT+CGNSURC=0\r";
+	uint8_t AT_CGNSURC_ASK[] 	= "AT+CGNSURC?\r";
 	//=========================GNSS
 
   /* USER CODE END 1 */
@@ -191,29 +192,22 @@ int main(void)
   //=========================GSM
   */
 
-  /*
   //=========================GNSS
   uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSPWR_ON, sizeof(AT_CGNSPWR_ON), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(1000);
+  HAL_Delay(20);
+  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+
+  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSURC_SET, sizeof(AT_CGNSURC_SET), 1000);
+  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+  HAL_Delay(10);
   memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
 
   uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSSEQ, sizeof(AT_CGNSSEQ), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(1000);
-  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSURC, sizeof(AT_CGNSURC), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(1000);
-  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(1000);
+  HAL_Delay(10);
   memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
   //=========================GNSS
-  */
 
   //=========================MPU9250
   i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, PWR_MGMT_1, sizeof(PWR_MGMT_1), 10);
@@ -297,15 +291,12 @@ int main(void)
 	  //uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
 	  //=========================RFID
 
-	  /*
 	  //=========================GNSS
 	  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
 	  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-	  HAL_Delay(1000);
+	  HAL_Delay(10);
 	  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
 	  //=========================GNSS
-	   */
-
 
 	  counter = counter +1;
     /* USER CODE END WHILE */
