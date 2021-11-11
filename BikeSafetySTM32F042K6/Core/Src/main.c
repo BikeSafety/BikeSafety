@@ -49,6 +49,8 @@ I2C_HandleTypeDef hi2c1;
 
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim16;
+
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
@@ -56,6 +58,7 @@ UART_HandleTypeDef huart2;
 
 uint32_t counter 		= 0;
 uint32_t counter2 		= 0;
+
 
 // MPU9250 Variables
 uint32_t finalXAccValue 			= 0;
@@ -65,8 +68,18 @@ uint32_t finalYAccValueWithOffset 	= 0;
 uint32_t finalZAccValue 			= 0;
 uint32_t finalZAccValueWithOffset 	= 0;
 
+uint32_t timerVal 	= 0;
+uint8_t clockCykles = 0;
+
+uint32_t refXAccValueWithOffset = 0;
+uint32_t refYAccValueWithOffset = 0;
+uint32_t refZAccValueWithOffset = 0;
+
+uint8_t lockedDevice = 0;
+
 uint8_t dataReceiveI2cBuffer 	= 0;	// MP9250
 uint8_t receiveUARTData[30] 	= {0};	// RFID
+uint8_t UARTDataKey[30] 		= {2,51,66,48,48,50,54,48,66,53,57,52,70,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};	// RFID KEY
 uint8_t receiveUART2Data[150] 	= {0};	// GSM/GNSS
 
 /* USER CODE END PV */
@@ -78,6 +91,7 @@ static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -158,6 +172,7 @@ int main(void)
   MX_SPI1_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
 
   /*
@@ -165,26 +180,21 @@ int main(void)
   uart2Status = HAL_UART_Transmit(&huart2, AT_COPS_RGSTR, sizeof(AT_COPS_RGSTR), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(10);
-
   uart2Status = HAL_UART_Transmit(&huart2, AT_COPS_CRNT, sizeof(AT_COPS_CRNT), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(5000);
-
   uart2Status = HAL_UART_Transmit(&huart2, AT_CMGF, sizeof(AT_CMGF), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(10);
   memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
   uart2Status = HAL_UART_Transmit(&huart2, AT_CSCS, sizeof(AT_CSCS), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(10);
   memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
   uart2Status = HAL_UART_Transmit(&huart2, AT_CMGS_SEND_MSG_BUF, sizeof(AT_CMGS_SEND_MSG_BUF), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(10);
   memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
   uart2Status = HAL_UART_Transmit(&huart2, AT_CMGS_SEND_CTRLZ, sizeof(AT_CMGS_SEND_CTRLZ), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(10);
@@ -197,17 +207,14 @@ int main(void)
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(1000);
   memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
   uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSSEQ, sizeof(AT_CGNSSEQ), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(1000);
   memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
   uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSURC, sizeof(AT_CGNSURC), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(1000);
   memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
   uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
   uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
   HAL_Delay(1000);
@@ -255,7 +262,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-
+  HAL_TIM_Base_Start(&htim16);
   while (1)
   {
 	  i2cState = HAL_I2C_GetState(&hi2c1);
@@ -286,16 +293,19 @@ int main(void)
 	  finalZAccValueWithOffset = finalZAccValue + 88000;
 	  //=========================MPU9250
 
-	  /*
+	  //=========================RFID
+	  uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
+	  //=========================RFID
+/*
 	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);	// ONBOARD LED
 	  HAL_Delay(500);
 	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 	  HAL_Delay(500);
-	  */
 
-	  //=========================RFID
-	  //uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
-	  //=========================RFID
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);	// EXTERNAL LED
+	  HAL_Delay(500);
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+	  HAL_Delay(500);*/
 
 	  /*
 	  //=========================GNSS
@@ -305,7 +315,46 @@ int main(void)
 	  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
 	  //=========================GNSS
 	   */
+	  if(counter2 != 0){
+		  if(__HAL_TIM_GET_COUNTER(&htim16) < timerVal){
+			  clockCykles++;
+			  timerVal = __HAL_TIM_GET_COUNTER(&htim16);
+		  }
+		  else{
+			  timerVal = __HAL_TIM_GET_COUNTER(&htim16);
+		  }
+	  }
 
+
+	  if(lockedDevice != 1){
+		  if(checkKey(receiveUARTData, UARTDataKey)){
+			  lockedDevice = 1;
+		  }
+		  else if(clockCykles > 33 && counter2 < 15){
+			  clockCykles = 0;
+			  counter2 = 0;
+		  }
+		  else if(counter2 > 15){
+			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+		  }
+		  else if(checkMovment()){
+			  if(counter2 == 0){
+				  timerVal = __HAL_TIM_GET_COUNTER(&htim16);
+				  counter2++;
+			  }
+			  else{
+				  counter2++;
+			  }
+		  }
+	  }
+	  else{
+		  if(finalZAccValueWithOffset < 100000){
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+		  }
+		  else{
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+		  }
+	  }
 
 	  counter = counter +1;
     /* USER CODE END WHILE */
@@ -447,6 +496,38 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 79;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 65535;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -531,13 +612,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_8, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PA0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  /*Configure GPIO pins : PA0 PA8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -554,6 +635,49 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	  //=========================RFID
+	  uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
+	  //=========================RFID
+	  if(counter2 == 1){
+		  counter2 = 0;
+	  }
+	  else{
+		  counter2 = 1;
+	  }
+}
+
+int checkKey(uint8_t arr1[],  uint8_t arr2[])
+{
+	int i;
+	for(i = 0; i < 30; i++)
+	{
+		if(arr1[i] != arr2[i])
+		{
+			return 0;
+		}
+	}
+	return 1;
+}
+
+int checkMovment()
+{
+	uint32_t xDiff = abs(refXAccValueWithOffset - finalXAccValueWithOffset);
+	uint32_t yDiff = abs(refYAccValueWithOffset - finalYAccValueWithOffset);
+	uint32_t zDiff = abs(refZAccValueWithOffset - finalZAccValueWithOffset);
+
+	refXAccValueWithOffset = finalXAccValueWithOffset;
+	refYAccValueWithOffset = finalYAccValueWithOffset;
+	refZAccValueWithOffset = finalZAccValueWithOffset;
+
+	if(xDiff > 200 || yDiff > 200 || zDiff > 200){
+		return 1;
+	}
+	else{
+		return 0;
+	}
+}
 /* USER CODE END 4 */
 
 /**
