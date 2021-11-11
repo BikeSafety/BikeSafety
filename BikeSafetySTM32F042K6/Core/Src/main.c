@@ -111,7 +111,7 @@ int main(void)
 
 	//=========================MPU9250
 	// Registers
-	uint8_t IMUDevAddr 				= 0xd0;
+7	uint8_t IMUDevAddr 				= 0xd0;
 	uint8_t PWR_MGMT_1[2] 			= {0x6b, 0b00100000};	// or 4
 	uint8_t PWR_MGMT_2[2] 			= {0x6c, 0b00000000};	// 0 to enable all or 255 to disable all
 	uint8_t WHO_AM_I 				= 0x75;
@@ -263,6 +263,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   HAL_TIM_Base_Start(&htim16);
+  uartStatus = HAL_UART_Receive_IT(&huart1, receiveUARTData, 14);
   while (1)
   {
 	  i2cState = HAL_I2C_GetState(&hi2c1);
@@ -294,8 +295,9 @@ int main(void)
 	  //=========================MPU9250
 
 	  //=========================RFID
-	  uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
+	  //uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
 	  //=========================RFID
+
 /*
 	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);	// ONBOARD LED
 	  HAL_Delay(500);
@@ -327,10 +329,7 @@ int main(void)
 
 
 	  if(lockedDevice != 1){
-		  if(checkKey(receiveUARTData, UARTDataKey)){
-			  lockedDevice = 1;
-		  }
-		  else if(clockCykles > 33 && counter2 < 15){
+		  if(clockCykles > 33 && counter2 < 15){
 			  clockCykles = 0;
 			  counter2 = 0;
 		  }
@@ -637,14 +636,22 @@ static void MX_GPIO_Init(void)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	  //=========================RFID
-	  uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
-	  //=========================RFID
-	  if(counter2 == 1){
-		  counter2 = 0;
-	  }
-	  else{
-		  counter2 = 1;
+	//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);	// ONBOARD LED
+	//HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+	 /*HAL_Delay(500);
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+	  HAL_Delay(500);*/
+	  uartStatus = HAL_UART_Receive_IT(&huart1, receiveUARTData, 14);
+	  if(checkKey(receiveUARTData, UARTDataKey)){
+		  if(!lockedDevice){
+			  lockedDevice = 1;
+			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+		  }
+		  else{
+			  lockedDevice = 0;
+			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+		  }
+
 	  }
 }
 
