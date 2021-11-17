@@ -69,6 +69,42 @@ uint8_t dataReceiveI2cBuffer 	= 0;	// MP9250
 uint8_t receiveUARTData[30] 	= {0};	// RFID
 uint8_t receiveUART2Data[150] 	= {0};	// GSM/GNSS
 
+//TODO Move all these to the functions
+uint8_t dummyBuffer[]			= "1,1,20150327014838.000,31.221783,-00.000100,24.123456,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
+//uint8_t dummyBuffer[]			= "1,1,20150327014838.000,31.221783,60.123456,24.123456,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
+uint8_t dummyBuffer2[]			= "1,1,20150327014838.000,31.221783,60.123458,24.123458,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
+uint8_t longLat[20];
+uint8_t degMinSecBuffer[3];
+int commaElement;
+int counterGNSS;
+int latStart;
+int latEndLongStart;
+int longEnd;
+int latDegSize;
+int longDegSize;
+int latNegDeg;
+int longNegDeg;
+int gnssFixElement;
+int gnssFixStatus;
+
+int latDeg;
+int latMin;
+int latSecFirst;
+int latSecSecond;
+
+int longDeg;
+int longMin;
+int longSecFirst;
+int longSecSecond;
+
+float latInMeters;
+float prevlatInMeters;
+float dlatInMeters;
+
+float longInMeters;
+float prevlongInMeters;
+float dlongInMeters;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,6 +115,12 @@ static void MX_SPI1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
+struct LatLongStruct latlongstructinstance; 		// TODO
+struct LatLongStruct prevlatlongstructinstance; 	// TODO
+struct OffsetFromHome offsetfromhome;				// TODO
+char notInitialValue = 0;							// TODO
+struct LatLongStruct getLatLongInMeters(void);
+struct OffsetFromHome getOffsetFromHome(struct LatLongStruct latlongstruct, struct LatLongStruct prevlatlongstruct, char notInitialValue);
 
 /* USER CODE END PFP */
 
@@ -243,6 +285,11 @@ int main(void)
 	  counter2 = counter2 +1;
   }
   */
+  latlongstructinstance = getLatLongInMeters();
+  offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, notInitialValue);
+  notInitialValue = 1;
+  prevlatlongstructinstance = latlongstructinstance;
+  HAL_Delay(1000);
 
   /* USER CODE END 2 */
 
@@ -292,11 +339,14 @@ int main(void)
 	  //=========================RFID
 
 	  //=========================GNSS
-	  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
-	  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-	  HAL_Delay(10);
-	  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+	  latlongstructinstance = getLatLongInMeters();
+	  offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, notInitialValue);
+	  //prevlatlongstructinstance = latlongstructinstance;
 	  //=========================GNSS
+
+	  //=========================Debug UART1 (Only debug use)
+
+	  //=========================Debug UART1 (Only debug use)
 
 	  counter = counter +1;
     /* USER CODE END WHILE */
@@ -544,6 +594,109 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+struct LatLongStruct getLatLongInMeters(void){
+	struct LatLongStruct latlongstruct = {0};	// Stores LatLong metric values
+	HAL_StatusTypeDef uart2Status;				// Status of uart2
+	uint8_t AT_CGNSINF[] = "AT+CGNSINF\r";		// Gets data from GNSS
+
+    uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
+    uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+    HAL_Delay(10);
+
+	//dummyBuffer[0]	= "1,1,20150327014838.000,31.221783,60.123456,24.123456,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
+
+	for(int i = 0; i < sizeof(receiveUART2Data); i++){
+		if(receiveUART2Data[i] == ','){
+			commaElement = i;
+			counterGNSS++;
+		}
+		if(counterGNSS == 1){
+			gnssFixElement = i;
+			if(receiveUART2Data[i] == '1'){
+				gnssFixStatus = 1;
+			}
+			if(receiveUART2Data[i] == '0'){
+				gnssFixStatus = 0;
+			}
+		}
+		if(counterGNSS == 2){
+			latStart = i+1;
+			if(receiveUART2Data[latStart+1] == '-'){latNegDeg = 1;}
+			else{latNegDeg = 0;}
+			for(int j = latStart; j < latStart+6; j++){
+				if(receiveUART2Data[j] == '.'){latDegSize = j-latStart-1-latNegDeg;}
+			}
+		}
+		if(counterGNSS == 3){
+			latEndLongStart = i+1;
+			if(receiveUART2Data[latEndLongStart+1] == '-'){longNegDeg = 1;}
+			else{longNegDeg = 0;}
+			for(int j = latEndLongStart; j < latEndLongStart+6; j++){
+				if(receiveUART2Data[j] == '.'){longDegSize = j-latEndLongStart-1-longNegDeg;}
+			}
+		}
+		if(counterGNSS == 6){
+			longEnd = i;
+			break;
+		}
+	}
+	counterGNSS = 0;
+
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+	for(int i = 0; i < latDegSize; i++){degMinSecBuffer[i+3-latDegSize] = receiveUART2Data[latStart+i+1+latNegDeg];}
+	latDeg = atoi(degMinSecBuffer);
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latStart+i+latDegSize+1+latNegDeg];}
+	latMin = atoi(degMinSecBuffer);
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latStart+i+latDegSize+3+latNegDeg];}
+	latSecFirst = atoi(degMinSecBuffer);
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latStart+i+latDegSize+5+latNegDeg];}
+	latSecSecond = atoi(degMinSecBuffer);
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+
+	for(int i = 0; i < longDegSize; i++){degMinSecBuffer[i+3-longDegSize] = receiveUART2Data[latEndLongStart+i+1+longNegDeg];}
+	longDeg = atoi(degMinSecBuffer);
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latEndLongStart+i+longDegSize+1+longNegDeg];}
+	longMin = atoi(degMinSecBuffer);
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latEndLongStart+i+longDegSize+3+longNegDeg];}
+	longSecFirst = atoi(degMinSecBuffer);
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latEndLongStart+i+longDegSize+5+longNegDeg];}
+	longSecSecond = atoi(degMinSecBuffer);
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+
+	latInMeters = (latDeg*111000.0)+(latMin*1850.0)+(latSecFirst*30.0)+(latSecSecond*0.3);
+	//dlatInMeters = abs(latInMeters - prevlatInMeters);
+	//prevlatInMeters = latInMeters;
+
+	longInMeters = (longDeg*111000.0)+(longMin*1850.0)+(longSecFirst*30.0)+(longSecSecond*0.3);
+	//dlongInMeters = abs(longInMeters - prevlongInMeters);
+	//prevlongInMeters = longInMeters;
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+
+	latlongstruct.gnssFixOk 	= gnssFixStatus;
+	latlongstruct.uartStatusOk	= uart2Status;
+	latlongstruct.latNeg		= latNegDeg;
+	latlongstruct.longNeg		= longNegDeg;
+	latlongstruct.latInMeters	= latInMeters;
+	latlongstruct.longInMeters	= longInMeters;
+
+	return latlongstruct;
+}
+
+struct OffsetFromHome getOffsetFromHome(struct LatLongStruct latlongstruct, struct LatLongStruct prevlatlongstruct, char notInitialValue){
+	struct OffsetFromHome offsetfromhome;
+	if(notInitialValue == 0){
+		offsetfromhome.offsetLatInMeters = 0.0;
+		offsetfromhome.offsetLongInMeters = 0.0;
+	}
+	if(notInitialValue == 1){
+		offsetfromhome.offsetLatInMeters = abs(latlongstruct.latInMeters - prevlatlongstruct.latInMeters);
+		offsetfromhome.offsetLongInMeters = abs(latlongstruct.longInMeters - prevlatlongstruct.longInMeters);
+	}
+	return offsetfromhome;
+}
 
 /* USER CODE END 4 */
 

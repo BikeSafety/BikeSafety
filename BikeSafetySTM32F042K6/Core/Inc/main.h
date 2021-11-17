@@ -34,11 +34,25 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+struct LatLongStruct{
+	float latInMeters;
+	float longInMeters;
+	char latNeg;
+	char longNeg;
+	char gnssFixOk;
+	char uartStatusOk;
+};
 
+struct OffsetFromHome{
+	float offsetLatInMeters;
+	float offsetLongInMeters;
+};
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
