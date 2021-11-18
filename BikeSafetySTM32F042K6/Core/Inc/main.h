@@ -53,6 +53,12 @@ struct OffsetFromHome{
 	float offsetLatInMeters;
 	float offsetLongInMeters;
 };
+
+struct GsmStruct{
+	char* phoneNumber;
+	char* message;
+	char numberOk;
+};
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -69,7 +75,11 @@ struct OffsetFromHome{
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+struct LatLongStruct getLatLongInMeters(void);
+struct OffsetFromHome getOffsetFromHome(struct LatLongStruct latlongstruct, struct LatLongStruct prevlatlongstruct, char notInitialValue);
+char gnssInit(void);
+char gsmInit(void);
+char sendGsmMessage(struct GsmStruct gsmstruct);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
