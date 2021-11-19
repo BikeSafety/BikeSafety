@@ -92,17 +92,17 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 
   /* USER CODE END I2C1_MspInit 0 */
 
-    __HAL_RCC_GPIOF_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
     /**I2C1 GPIO Configuration
-    PF0-OSC_IN     ------> I2C1_SDA
-    PF1-OSC_OUT     ------> I2C1_SCL
+    PA11     ------> I2C1_SCL
+    PA12     ------> I2C1_SDA
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+    GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF1_I2C1;
-    HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+    GPIO_InitStruct.Alternate = GPIO_AF5_I2C1;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /* Peripheral clock enable */
     __HAL_RCC_I2C1_CLK_ENABLE();
@@ -130,12 +130,12 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
     __HAL_RCC_I2C1_CLK_DISABLE();
 
     /**I2C1 GPIO Configuration
-    PF0-OSC_IN     ------> I2C1_SDA
-    PF1-OSC_OUT     ------> I2C1_SCL
+    PA11     ------> I2C1_SCL
+    PA12     ------> I2C1_SDA
     */
-    HAL_GPIO_DeInit(GPIOF, GPIO_PIN_0);
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11);
 
-    HAL_GPIO_DeInit(GPIOF, GPIO_PIN_1);
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_12);
 
   /* USER CODE BEGIN I2C1_MspDeInit 1 */
 

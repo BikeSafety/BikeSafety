@@ -111,12 +111,17 @@ int main(void)
 
 	//=========================MPU9250
 	// Registers
-7	uint8_t IMUDevAddr 				= 0xd0;
+	uint8_t IMUDevAddr 				= 0xd0;
 	uint8_t PWR_MGMT_1[2] 			= {0x6b, 0b00100000};	// or 4
 	uint8_t PWR_MGMT_2[2] 			= {0x6c, 0b00000000};	// 0 to enable all or 255 to disable all
 	uint8_t WHO_AM_I 				= 0x75;
 	uint8_t LP_ACCEL_ODR[2] 		= {0x1e, 0b00001000}; 	// 8 = output frequency 62.50Hz
 	uint8_t ACCEL_CONFIG[2] 		= {0x1c, 0x0}; 			// 0x0 for 2g, 0x8 for 4g, 0x10 for 8g,0x18 for 16g
+	uint8_t INT_ENABLE[2] 			= {0x38, 0x00};			// enable motion interrupt
+	uint8_t MOT_DETECT_CTRL[2] 		= {0x69, 0b11000000};	// enable hardware intelligence
+	uint8_t WOM_THR[2]				= {0x1f, 0x7f};			// threshold
+	uint8_t maskLP_ACCEL_ODR[2] 		= {0x1e, 0b00000100}; 	// frequency of wake-up
+	uint8_t PWR_MGMT_1_new[2] 		= {0x6b, 0b00100000};	// cycle mode
 	uint8_t ACCEL_XOUT_L 			= 0x3c;
 	uint8_t ACCEL_XOUT_H 			= 0x3b;
 	uint8_t ACCEL_YOUT_L 			= 0x3e;
@@ -266,39 +271,89 @@ int main(void)
   uartStatus = HAL_UART_Receive_IT(&huart1, receiveUARTData, 14);
   while (1)
   {
-	  i2cState = HAL_I2C_GetState(&hi2c1);
 
+	  //i2cState = HAL_I2C_GetState(&hi2c1);
+
+	  if(lockedDevice == 1 || counter2 != 0){
+		  i2cState = HAL_I2C_GetState(&hi2c1);
 	  //=========================MPU9250
-	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_XOUT_L, sizeof(ACCEL_XOUT_L), 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
-	  finalXAccValue = dataReceiveI2cBuffer;
-	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_XOUT_H, sizeof(ACCEL_XOUT_H), 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
-	  finalXAccValue = finalXAccValue + (dataReceiveI2cBuffer << 8);
-	  finalXAccValueWithOffset = finalXAccValue + 40000;
+		  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_XOUT_L, sizeof(ACCEL_XOUT_L), 10);
+		  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
+		  finalXAccValue = dataReceiveI2cBuffer;
+		  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_XOUT_H, sizeof(ACCEL_XOUT_H), 10);
+		  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
+		  finalXAccValue = finalXAccValue + (dataReceiveI2cBuffer << 8);
+		  finalXAccValueWithOffset = finalXAccValue + 40000;
 
-	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_YOUT_L, sizeof(ACCEL_YOUT_L), 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
-	  finalYAccValue = dataReceiveI2cBuffer;
-	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_YOUT_H, sizeof(ACCEL_YOUT_H), 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
-	  finalYAccValue = finalYAccValue + (dataReceiveI2cBuffer << 8);
-	  finalYAccValueWithOffset = finalYAccValue + 40000;
+		  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_YOUT_L, sizeof(ACCEL_YOUT_L), 10);
+		  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
+		  finalYAccValue = dataReceiveI2cBuffer;
+		  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_YOUT_H, sizeof(ACCEL_YOUT_H), 10);
+		  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
+		  finalYAccValue = finalYAccValue + (dataReceiveI2cBuffer << 8);
+		  finalYAccValueWithOffset = finalYAccValue + 40000;
 
-	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_ZOUT_L, sizeof(ACCEL_ZOUT_L), 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
-	  finalZAccValue = dataReceiveI2cBuffer;
-	  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_ZOUT_H, sizeof(ACCEL_ZOUT_H), 10);
-	  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
-	  finalZAccValue = finalZAccValue + (dataReceiveI2cBuffer << 8);
-	  finalZAccValueWithOffset = finalZAccValue + 88000;
+		  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_ZOUT_L, sizeof(ACCEL_ZOUT_L), 10);
+		  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
+		  finalZAccValue = dataReceiveI2cBuffer;
+		  i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &ACCEL_ZOUT_H, sizeof(ACCEL_ZOUT_H), 10);
+		  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 100);
+		  finalZAccValue = finalZAccValue + (dataReceiveI2cBuffer << 8);
+		  finalZAccValueWithOffset = finalZAccValue + 88000;
 	  //=========================MPU9250
+	  }
+	  if(lockedDevice == 1){
+		  //counter = counter +1;
+		  if(finalZAccValueWithOffset < 100000){
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+		  }
+		  else{
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+		  }
+	  }
+
+	  else if(counter2 != 0){
+		  if(__HAL_TIM_GET_COUNTER(&htim16) < timerVal){
+			  clockCykles++;
+			  timerVal = __HAL_TIM_GET_COUNTER(&htim16);
+		  }
+		  else{
+			  timerVal = __HAL_TIM_GET_COUNTER(&htim16);
+		  }
+
+		  if(clockCykles > 33 && counter2 < 15){
+			  clockCykles = 0;
+			  counter2 = 0;
+			  //INT_ENABLE[1] = 0x40;
+		  }
+		  else if(counter2 > 15){
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);	// EXTERNAL LED
+			  HAL_Delay(500);
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+			  HAL_Delay(500);
+		  }
+		  else if(checkMovment() == 1){
+			  counter2++;
+		  }
+
+	  }
+
+	  else{
+		HAL_SuspendTick();
+
+		  HAL_PWR_EnableSleepOnExit ();
+		  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+
+		  HAL_ResumeTick();
+	  }
+
+	  /*
 
 	  //=========================RFID
 	  //uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
 	  //=========================RFID
 
-/*
+
 	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);	// ONBOARD LED
 	  HAL_Delay(500);
 	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
@@ -317,6 +372,7 @@ int main(void)
 	  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
 	  //=========================GNSS
 	   */
+	  /*
 	  if(counter2 != 0){
 		  if(__HAL_TIM_GET_COUNTER(&htim16) < timerVal){
 			  clockCykles++;
@@ -334,7 +390,10 @@ int main(void)
 			  counter2 = 0;
 		  }
 		  else if(counter2 > 15){
-			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);	// EXTERNAL LED
+			  HAL_Delay(500);
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+			  HAL_Delay(500);
 		  }
 		  else if(checkMovment()){
 			  if(counter2 == 0){
@@ -354,7 +413,7 @@ int main(void)
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 		  }
 	  }
-
+		*/
 	  counter = counter +1;
     /* USER CODE END WHILE */
 
@@ -606,7 +665,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
@@ -623,6 +681,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pin : PB3 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -630,9 +694,26 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if(GPIO_Pin == GPIO_PIN_4 && lockedDevice == 0) // If The INT Source Is EXTI Line4 (A4 Pin)
+    {
+    	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3); // Toggle The ONBOARD LED
+    	timerVal = __HAL_TIM_GET_COUNTER(&htim16);
+    	counter2++;
+    	HAL_PWR_DisableSleepOnExit ();
+    	//uint8_t INT_ENABLE[2] 			= {0x38, 0x00};
+    }
+
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -642,14 +723,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 	  HAL_Delay(500);*/
 	  uartStatus = HAL_UART_Receive_IT(&huart1, receiveUARTData, 14);
-	  if(checkKey(receiveUARTData, UARTDataKey)){
+	  if(checkKey(receiveUARTData, UARTDataKey) == 1){
 		  if(!lockedDevice){
 			  lockedDevice = 1;
-			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+			  counter2 = 0;
+			  HAL_PWR_DisableSleepOnExit ();
+			  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
 		  }
 		  else{
 			  lockedDevice = 0;
-			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+
+			  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
 		  }
 
 	  }
