@@ -120,7 +120,7 @@ int main(void)
 	uint8_t INT_ENABLE[2] 			= {0x38, 0x00};			// enable motion interrupt
 	uint8_t MOT_DETECT_CTRL[2] 		= {0x69, 0b11000000};	// enable hardware intelligence
 	uint8_t WOM_THR[2]				= {0x1f, 0x7f};			// threshold
-	uint8_t maskLP_ACCEL_ODR[2] 		= {0x1e, 0b00000100}; 	// frequency of wake-up
+	uint8_t maskLP_ACCEL_ODR[2] 	= {0x1e, 0b00000100}; 	// frequency of wake-up
 	uint8_t PWR_MGMT_1_new[2] 		= {0x6b, 0b00100000};	// cycle mode
 	uint8_t ACCEL_XOUT_L 			= 0x3c;
 	uint8_t ACCEL_XOUT_H 			= 0x3b;
