@@ -105,6 +105,8 @@ float longInMeters;
 float prevlongInMeters;
 float dlongInMeters;
 
+int enterToFunction = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -200,16 +202,16 @@ int main(void)
   //=========================MPU9250
 
   gnssInit();
-/*
   latlongstructinstance = getLatLongInMeters();
   offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, notInitialValue);
   notInitialValue = 1;
   prevlatlongstructinstance = latlongstructinstance;
   HAL_Delay(1000);
-*/
+
+
   gsmInit();											// GSM initializer
   gsmstruct.phoneNumber = "+35844350xxxx";				// Enter number in this format
-  gsmstruct.message		= "Example how to use this";	// Enter message to be send in this format
+  gsmstruct.message		= "Sent from Otakaari 5tryreyre";	// Enter message to be send in this format
   sendGsmMessage(gsmstruct);
 
   /* USER CODE END 2 */
@@ -516,13 +518,14 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 struct LatLongStruct getLatLongInMeters(void){
+	enterToFunction = 1; // TODO delete
 	struct LatLongStruct latlongstruct = {0};	// Stores LatLong metric values
 	HAL_StatusTypeDef uart2Status;				// Status of uart2
 	uint8_t AT_CGNSINF[] = "AT+CGNSINF\r";		// Gets data from GNSS
 
     uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
     uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-    HAL_Delay(10);
+    HAL_Delay(100);
 
 	//dummyBuffer[0]	= "1,1,20150327014838.000,31.221783,60.123456,24.123456,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
 
@@ -606,6 +609,7 @@ struct LatLongStruct getLatLongInMeters(void){
 }
 
 struct OffsetFromHome getOffsetFromHome(struct LatLongStruct latlongstruct, struct LatLongStruct prevlatlongstruct, char notInitialValue){
+	enterToFunction = 2; // TODO delete
 	struct OffsetFromHome offsetfromhome;
 	if(notInitialValue == 0){
 		offsetfromhome.offsetLatInMeters = 0.0;
@@ -631,18 +635,18 @@ char gnssInit(void){
 	//=========================GNSS
 
 	//=========================GNSS
-	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSPWR_ON, sizeof(AT_CGNSPWR_ON), 10);
-	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSPWR_ON, sizeof(AT_CGNSPWR_ON), 1000);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
 	HAL_Delay(20);
 	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
 
-	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSURC_SET, sizeof(AT_CGNSURC_SET), 10);
-	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSURC_SET, sizeof(AT_CGNSURC_SET), 1000);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
 	HAL_Delay(10);
 	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
 
-	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSSEQ, sizeof(AT_CGNSSEQ), 10);
-	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSSEQ, sizeof(AT_CGNSSEQ), 1000);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
 	HAL_Delay(10);
 	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
 	//=========================GNSS
@@ -704,8 +708,6 @@ char sendGsmMessage(struct GsmStruct gsmstruct){
 	//=========================GSM
 	char AT_CMGS_SEND_MSG_BUF_STRT[] = "AT+CMGS=\"";
 	char AT_CMGS_SEND_MSG_BUF_MIDL[] = "\"\r";
-	char tempBuf1[25];
-	char tempBuf2[25];
 
 	char AT_CMGS_SEND_MSG_BUF_TOT[sizeof(AT_CMGS_SEND_MSG_BUF_STRT)+sizeof(AT_CMGS_SEND_MSG_BUF_MIDL)+strlen(gsmstruct.phoneNumber)+strlen(gsmstruct.message)-1];
 	strcpy(AT_CMGS_SEND_MSG_BUF_TOT, AT_CMGS_SEND_MSG_BUF_STRT);
