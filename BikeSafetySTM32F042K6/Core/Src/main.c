@@ -377,7 +377,7 @@ int main(void)
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 		  }
 	  }
-		*/
+
 	  counter = counter +1;
     /* USER CODE END WHILE */
 
