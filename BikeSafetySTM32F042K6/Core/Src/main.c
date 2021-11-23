@@ -69,6 +69,44 @@ uint8_t dataReceiveI2cBuffer 	= 0;	// MP9250
 uint8_t receiveUARTData[30] 	= {0};	// RFID
 uint8_t receiveUART2Data[150] 	= {0};	// GSM/GNSS
 
+//TODO Move all these to the functions
+uint8_t dummyBuffer[]			= "1,1,20150327014838.000,31.221783,-00.000100,24.123456,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
+//uint8_t dummyBuffer[]			= "1,1,20150327014838.000,31.221783,60.123456,24.123456,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
+uint8_t dummyBuffer2[]			= "1,1,20150327014838.000,31.221783,60.123458,24.123458,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
+uint8_t longLat[20];
+uint8_t degMinSecBuffer[3];
+int commaElement;
+int counterGNSS;
+int latStart;
+int latEndLongStart;
+int longEnd;
+int latDegSize;
+int longDegSize;
+int latNegDeg;
+int longNegDeg;
+int gnssFixElement;
+int gnssFixStatus;
+
+int latDeg;
+int latMin;
+int latSecFirst;
+int latSecSecond;
+
+int longDeg;
+int longMin;
+int longSecFirst;
+int longSecSecond;
+
+float latInMeters;
+float prevlatInMeters;
+float dlatInMeters;
+
+float longInMeters;
+float prevlongInMeters;
+float dlongInMeters;
+
+int enterToFunction = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,6 +117,11 @@ static void MX_SPI1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
+struct LatLongStruct latlongstructinstance; 		// TODO
+struct LatLongStruct prevlatlongstructinstance; 	// TODO
+struct OffsetFromHome offsetfromhome;				// TODO
+char notInitialValue = 0;							// TODO
+struct GsmStruct gsmstruct;							// TODO
 
 /* USER CODE END PFP */
 
@@ -111,30 +154,6 @@ int main(void)
 	uint8_t ACCEL_ZOUT_H 			= 0x3f;
 	//=========================MPU9250
 
-	//=========================GSM
-	uint8_t AT[] 					= "AT\r";
-	uint8_t ATI[] 					= "ATI\r";
-	uint8_t AT_CFUN[] 				= "AT+CFUN=1\r";			// Full Functionality Configuration
-	uint8_t AT_COPS_OPCHK[] 		= "AT+COPS=?\r";			// Returns all operators available
-	uint8_t AT_COPS_CRNT[] 			= "AT+COPS?\r";				// Returns current operator
-	uint8_t AT_COPS_RGSTR[] 		= "AT+COPS=0\r";			// Register to operator network AT+COPS=<mode>,[<format>[,<oper>]]
-	uint8_t AT_CMGF[] 				= "AT+CMGF=1\r";			// Set to text mode
-	uint8_t AT_CSCS[] 				= "AT+CSCS=\"GSM\"\r";		// Set character
-	uint8_t AT_CSQ[] 				= "AT+CSQ\r";				// Get Signal Strength in dBm
-	uint8_t AT_CPOWD[] 				= "AT+CPOWD=1\r";			// Power OFF Modem
-	uint8_t AT_CMGS_SEND_CTRLZ[] 	= "\x1a";					// Send Control
-	uint8_t AT_CMGS_SEND_MSG_BUF[] 	= "AT+CMGS=\"+35844350xxxx\"\rTesting11";
-	//=========================GSM
-
-	//=========================GNSS
-	uint8_t AT_CGNSPWR_ON[] 	= "AT+CGNSPWR=1\r";				// GNSS turns Power ON
-	uint8_t AT_CGNSPWR_OFF[] 	= "AT+CGNSPWR=0\r";				// GNSS turns Power OFF
-	uint8_t AT_CGNSSEQ[] 		= "AT+CGNSSEQ=\"RMC\"\r";		// RMC for GGA
-	uint8_t AT_CGNSINF[] 		= "AT+CGNSINF\r";				// Gets data from GNSS
-	uint8_t AT_CGNSURC_SET[] 	= "AT+CGNSURC=0\r";
-	uint8_t AT_CGNSURC_ASK[] 	= "AT+CGNSURC?\r";
-	//=========================GNSS
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -161,94 +180,44 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  /*
-  //=========================GSM
-  uart2Status = HAL_UART_Transmit(&huart2, AT_COPS_RGSTR, sizeof(AT_COPS_RGSTR), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(10);
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_COPS_CRNT, sizeof(AT_COPS_CRNT), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(5000);
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CMGF, sizeof(AT_CMGF), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(10);
-  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CSCS, sizeof(AT_CSCS), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(10);
-  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CMGS_SEND_MSG_BUF, sizeof(AT_CMGS_SEND_MSG_BUF), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(10);
-  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CMGS_SEND_CTRLZ, sizeof(AT_CMGS_SEND_CTRLZ), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(10);
-  //=========================GSM
-  */
-
-  //=========================GNSS
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSPWR_ON, sizeof(AT_CGNSPWR_ON), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(20);
-  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSURC_SET, sizeof(AT_CGNSURC_SET), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(10);
-  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-
-  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSSEQ, sizeof(AT_CGNSSEQ), 1000);
-  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-  HAL_Delay(10);
-  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
-  //=========================GNSS
-
   //=========================MPU9250
   i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, PWR_MGMT_1, sizeof(PWR_MGMT_1), 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 1000);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 10);
 
   HAL_Delay(10);
   i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, PWR_MGMT_2, sizeof(PWR_MGMT_2), 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 1000);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 10);
 
   HAL_Delay(10);
   i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, &WHO_AM_I, sizeof(WHO_AM_I), 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 1000);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 10);
 
   HAL_Delay(10);
   i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, LP_ACCEL_ODR, sizeof(LP_ACCEL_ODR), 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 1000);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 10);
 
   HAL_Delay(10);
   i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_CONFIG, sizeof(ACCEL_CONFIG), 10);
-  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 1000);
+  i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 10);
   //=========================MPU9250
 
-  /*
-  for(uint16_t i = 0; i < 256; i++)	// Used to scan for I2C devices
-  {
-	  i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, i, 1, 1);
-	  if(i2cStatus == HAL_OK)
-	  {
-		  IMUDevAddr = i;
-		  break;
-	  }
-	  //HAL_Delay(200);
-	  counter2 = counter2 +1;
-  }
-  */
+  gnssInit();
+  latlongstructinstance = getLatLongInMeters();
+  offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, notInitialValue);
+  notInitialValue = 1;
+  prevlatlongstructinstance = latlongstructinstance;
+  HAL_Delay(1000);
+
+
+  gsmInit();											// GSM initializer
+  gsmstruct.phoneNumber = "+35844350xxxx";				// Enter number in this format
+  gsmstruct.message		= "Sent from Otakaari 5tryreyre";	// Enter message to be send in this format
+  sendGsmMessage(gsmstruct);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
 
   while (1)
   {
@@ -292,11 +261,14 @@ int main(void)
 	  //=========================RFID
 
 	  //=========================GNSS
-	  uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
-	  uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
-	  HAL_Delay(10);
-	  memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+	  latlongstructinstance = getLatLongInMeters();
+	  offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, notInitialValue);
+	  //prevlatlongstructinstance = latlongstructinstance;
 	  //=========================GNSS
+
+	  //=========================Debug UART1 (Only debug use)
+
+	  //=========================Debug UART1 (Only debug use)
 
 	  counter = counter +1;
     /* USER CODE END WHILE */
@@ -544,6 +516,242 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+struct LatLongStruct getLatLongInMeters(void){
+	enterToFunction = 1; // TODO delete
+	struct LatLongStruct latlongstruct = {0};	// Stores LatLong metric values
+	HAL_StatusTypeDef uart2Status;				// Status of uart2
+	uint8_t AT_CGNSINF[] = "AT+CGNSINF\r";		// Gets data from GNSS
+
+    uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSINF, sizeof(AT_CGNSINF), 1000);
+    uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+    HAL_Delay(100);
+
+	//dummyBuffer[0]	= "1,1,20150327014838.000,31.221783,60.123456,24.123456,0.28,0.0,1,,1.9,2.2,1.0,,8,4,,,42,,";
+
+	for(int i = 0; i < sizeof(receiveUART2Data); i++){
+		if(receiveUART2Data[i] == ','){
+			commaElement = i;
+			counterGNSS++;
+		}
+		if(counterGNSS == 1){
+			gnssFixElement = i;
+			if(receiveUART2Data[i] == '1'){
+				gnssFixStatus = 1;
+			}
+			if(receiveUART2Data[i] == '0'){
+				gnssFixStatus = 0;
+			}
+		}
+		if(counterGNSS == 2){
+			latStart = i+1;
+			if(receiveUART2Data[latStart+1] == '-'){latNegDeg = 1;}
+			else{latNegDeg = 0;}
+			for(int j = latStart; j < latStart+6; j++){
+				if(receiveUART2Data[j] == '.'){latDegSize = j-latStart-1-latNegDeg;}
+			}
+		}
+		if(counterGNSS == 3){
+			latEndLongStart = i+1;
+			if(receiveUART2Data[latEndLongStart+1] == '-'){longNegDeg = 1;}
+			else{longNegDeg = 0;}
+			for(int j = latEndLongStart; j < latEndLongStart+6; j++){
+				if(receiveUART2Data[j] == '.'){longDegSize = j-latEndLongStart-1-longNegDeg;}
+			}
+		}
+		if(counterGNSS == 6){
+			longEnd = i;
+			break;
+		}
+	}
+	counterGNSS = 0;
+
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+	for(int i = 0; i < latDegSize; i++){degMinSecBuffer[i+3-latDegSize] = receiveUART2Data[latStart+i+1+latNegDeg];}
+	latDeg = atoi(degMinSecBuffer);
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latStart+i+latDegSize+1+latNegDeg];}
+	latMin = atoi(degMinSecBuffer);
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latStart+i+latDegSize+3+latNegDeg];}
+	latSecFirst = atoi(degMinSecBuffer);
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latStart+i+latDegSize+5+latNegDeg];}
+	latSecSecond = atoi(degMinSecBuffer);
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+
+	for(int i = 0; i < longDegSize; i++){degMinSecBuffer[i+3-longDegSize] = receiveUART2Data[latEndLongStart+i+1+longNegDeg];}
+	longDeg = atoi(degMinSecBuffer);
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latEndLongStart+i+longDegSize+1+longNegDeg];}
+	longMin = atoi(degMinSecBuffer);
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latEndLongStart+i+longDegSize+3+longNegDeg];}
+	longSecFirst = atoi(degMinSecBuffer);
+	for(int i = 1; i < 3; i++){degMinSecBuffer[i] = receiveUART2Data[latEndLongStart+i+longDegSize+5+longNegDeg];}
+	longSecSecond = atoi(degMinSecBuffer);
+	memset(degMinSecBuffer, '0', sizeof(degMinSecBuffer));
+
+	latInMeters = (latDeg*111000.0)+(latMin*1850.0)+(latSecFirst*30.0)+(latSecSecond*0.3);
+	//dlatInMeters = abs(latInMeters - prevlatInMeters);
+	//prevlatInMeters = latInMeters;
+
+	longInMeters = (longDeg*111000.0)+(longMin*1850.0)+(longSecFirst*30.0)+(longSecSecond*0.3);
+	//dlongInMeters = abs(longInMeters - prevlongInMeters);
+	//prevlongInMeters = longInMeters;
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+
+	latlongstruct.gnssFixOk 	= gnssFixStatus;
+	latlongstruct.uartStatusOk	= uart2Status;
+	latlongstruct.latNeg		= latNegDeg;
+	latlongstruct.longNeg		= longNegDeg;
+	latlongstruct.latInMeters	= latInMeters;
+	latlongstruct.longInMeters	= longInMeters;
+
+	return latlongstruct;
+}
+
+struct OffsetFromHome getOffsetFromHome(struct LatLongStruct latlongstruct, struct LatLongStruct prevlatlongstruct, char notInitialValue){
+	enterToFunction = 2; // TODO delete
+	struct OffsetFromHome offsetfromhome;
+	if(notInitialValue == 0){
+		offsetfromhome.offsetLatInMeters = 0.0;
+		offsetfromhome.offsetLongInMeters = 0.0;
+	}
+	if(notInitialValue == 1){
+		offsetfromhome.offsetLatInMeters = abs(latlongstruct.latInMeters - prevlatlongstruct.latInMeters);
+		offsetfromhome.offsetLongInMeters = abs(latlongstruct.longInMeters - prevlatlongstruct.longInMeters);
+	}
+	return offsetfromhome;
+}
+
+char gnssInit(void){
+	// TODO Add proper status return or error handling
+	char initStatus = 0;
+	//=========================GNSS
+	uint8_t AT_CGNSPWR_ON[] 	= "AT+CGNSPWR=1\r";				// GNSS turns Power ON
+	uint8_t AT_CGNSPWR_OFF[] 	= "AT+CGNSPWR=0\r";				// GNSS turns Power OFF
+	uint8_t AT_CGNSSEQ[] 		= "AT+CGNSSEQ=\"RMC\"\r";		// RMC for GGA
+	uint8_t AT_CGNSINF[] 		= "AT+CGNSINF\r";				// Gets data from GNSS
+	uint8_t AT_CGNSURC_SET[] 	= "AT+CGNSURC=0\r";
+	uint8_t AT_CGNSURC_ASK[] 	= "AT+CGNSURC?\r";
+	//=========================GNSS
+
+	//=========================GNSS
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSPWR_ON, sizeof(AT_CGNSPWR_ON), 1000);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+	HAL_Delay(20);
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSURC_SET, sizeof(AT_CGNSURC_SET), 1000);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+	HAL_Delay(10);
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CGNSSEQ, sizeof(AT_CGNSSEQ), 1000);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 1000);
+	HAL_Delay(10);
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+	//=========================GNSS
+	initStatus = 1;
+	return initStatus;
+}
+
+
+char gsmInit(void){
+	// TODO Add proper status return or error handling
+	char initStatus = 0;
+	//=========================GSM
+	uint8_t AT[] 					= "AT\r";
+	uint8_t ATI[] 					= "ATI\r";
+	uint8_t AT_CFUN[] 				= "AT+CFUN=1\r";			// Full Functionality Configuration
+	uint8_t AT_COPS_OPCHK[] 		= "AT+COPS=?\r";			// Returns all operators available
+	uint8_t AT_COPS_CRNT[] 			= "AT+COPS?\r";				// Returns current operator
+	uint8_t AT_COPS_RGSTR[] 		= "AT+COPS=0\r";			// Register to operator network AT+COPS=<mode>,[<format>[,<oper>]]
+	uint8_t AT_CMGF[] 				= "AT+CMGF=1\r";			// Set to text mode
+	uint8_t AT_CSCS[] 				= "AT+CSCS=\"GSM\"\r";		// Set character
+	uint8_t AT_CSQ[] 				= "AT+CSQ\r";				// Get Signal Strength in dBm
+	uint8_t AT_CPOWD[] 				= "AT+CPOWD=1\r";			// Power OFF Modem
+	uint8_t AT_CMGS_SEND_CTRLZ[] 	= "\x1a";					// Send Control
+	//=========================GSM
+
+	//=========================GSM
+	uart2Status = HAL_UART_Transmit(&huart2, AT_COPS_RGSTR, sizeof(AT_COPS_RGSTR), 10);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	HAL_Delay(10);
+
+	uart2Status = HAL_UART_Transmit(&huart2, AT_COPS_CRNT, sizeof(AT_COPS_CRNT), 10);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	HAL_Delay(50);
+
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CMGF, sizeof(AT_CMGF), 10);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	HAL_Delay(10);
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+	initStatus = 1;
+	return initStatus;
+}
+
+char sendGsmMessage(struct GsmStruct gsmstruct){
+	// TODO Add proper status return or error handling
+	gsmstruct.numberOk = 0;
+	//=========================GSM
+	uint8_t AT[] 					= "AT\r";
+	uint8_t ATI[] 					= "ATI\r";
+	uint8_t AT_CFUN[] 				= "AT+CFUN=1\r";			// Full Functionality Configuration
+	uint8_t AT_COPS_OPCHK[] 		= "AT+COPS=?\r";			// Returns all operators available
+	uint8_t AT_COPS_CRNT[] 			= "AT+COPS?\r";				// Returns current operator
+	uint8_t AT_COPS_RGSTR[] 		= "AT+COPS=0\r";			// Register to operator network AT+COPS=<mode>,[<format>[,<oper>]]
+	uint8_t AT_CMGF[] 				= "AT+CMGF=1\r";			// Set to text mode
+	uint8_t AT_CSCS[] 				= "AT+CSCS=\"GSM\"\r";		// Set character
+	uint8_t AT_CSQ[] 				= "AT+CSQ\r";				// Get Signal Strength in dBm
+	uint8_t AT_CPOWD[] 				= "AT+CPOWD=1\r";			// Power OFF Modem
+	uint8_t AT_CMGS_SEND_CTRLZ[] 	= "\x1a";					// Send Control
+	//uint8_t AT_CMGS_SEND_MSG_BUF[] 	= "AT+CMGS=\"+35844350xxxx\"\rMESSAGE";
+	//=========================GSM
+	char AT_CMGS_SEND_MSG_BUF_STRT[] = "AT+CMGS=\"";
+	char AT_CMGS_SEND_MSG_BUF_MIDL[] = "\"\r";
+
+	char AT_CMGS_SEND_MSG_BUF_TOT[sizeof(AT_CMGS_SEND_MSG_BUF_STRT)+sizeof(AT_CMGS_SEND_MSG_BUF_MIDL)+strlen(gsmstruct.phoneNumber)+strlen(gsmstruct.message)-1];
+	strcpy(AT_CMGS_SEND_MSG_BUF_TOT, AT_CMGS_SEND_MSG_BUF_STRT);
+	strcat(AT_CMGS_SEND_MSG_BUF_TOT, gsmstruct.phoneNumber);
+	strcat(AT_CMGS_SEND_MSG_BUF_TOT, AT_CMGS_SEND_MSG_BUF_MIDL);
+	strcat(AT_CMGS_SEND_MSG_BUF_TOT, gsmstruct.message);
+	//=========================GSM
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CSCS, sizeof(AT_CSCS), 10);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	HAL_Delay(10);
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CMGS_SEND_MSG_BUF_TOT, sizeof(AT_CMGS_SEND_MSG_BUF_TOT), 10);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	HAL_Delay(10);
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+
+	uart2Status = HAL_UART_Transmit(&huart2, AT_CMGS_SEND_CTRLZ, sizeof(AT_CMGS_SEND_CTRLZ), 1000);
+	uart2Status = HAL_UART_Receive(&huart2, receiveUART2Data, sizeof(receiveUART2Data), 10);
+	HAL_Delay(10);
+	memset(receiveUART2Data, '?', sizeof(receiveUART2Data));
+	//=========================GSM
+	gsmstruct.numberOk = 1;
+	return gsmstruct.numberOk;
+}
+
+/* TODO Implement proper I2C if needed
+void i2cScanDevices(void){
+	for(uint16_t i = 0; i < 256; i++)	// Used to scan for I2C devices
+	{
+	  i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, i, 1, 1);
+	  if(i2cStatus == HAL_OK)
+	  {
+		  IMUDevAddr = i;
+		  break;
+	  }
+	  //HAL_Delay(200);
+	  //counter2 = counter2 +1;
+	}
+
+}
+*/
 
 /* USER CODE END 4 */
 

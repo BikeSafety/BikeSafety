@@ -34,11 +34,33 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+struct LatLongStruct{
+	float latidude;
+	float longitude;
+	float latInMeters;
+	float longInMeters;
+	char latNeg;
+	char longNeg;
+	char gnssFixOk;
+	char uartStatusOk;
+};
 
+struct OffsetFromHome{
+	float offsetLatInMeters;
+	float offsetLongInMeters;
+};
+
+struct GsmStruct{
+	char* phoneNumber;
+	char* message;
+	char numberOk;
+};
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -55,7 +77,12 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+struct LatLongStruct getLatLongInMeters(void);
+struct LatLongStruct getLatLong(void);
+struct OffsetFromHome getOffsetFromHome(struct LatLongStruct latlongstruct, struct LatLongStruct prevlatlongstruct, char notInitialValue);
+char gnssInit(void);
+char gsmInit(void);
+char sendGsmMessage(struct GsmStruct gsmstruct);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
