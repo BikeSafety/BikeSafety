@@ -79,7 +79,7 @@ uint8_t lockedDevice = 0;
 
 uint8_t dataReceiveI2cBuffer 	= 0;	// MP9250
 uint8_t receiveUARTData[30] 	= {0};	// RFID
-uint8_t UARTDataKey[30] 		= {2,51,66,48,48,50,54,48,66,53,57,52,70,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};	// RFID KEY
+uint8_t UARTDataKey[30] 		= {2,51,55,48,48,50,70,66,55,67,53,54,65,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};	// RFID KEY
 uint8_t receiveUART2Data[150] 	= {0};	// GSM/GNSS
 
 /* USER CODE END PV */
@@ -111,7 +111,7 @@ int main(void)
 
 	//=========================MPU9250
 	// Registers
-7	uint8_t IMUDevAddr 				= 0xd0;
+	uint8_t IMUDevAddr 				= 0xd0;
 	uint8_t PWR_MGMT_1[2] 			= {0x6b, 0b00100000};	// or 4
 	uint8_t PWR_MGMT_2[2] 			= {0x6c, 0b00000000};	// 0 to enable all or 255 to disable all
 	uint8_t WHO_AM_I 				= 0x75;
@@ -334,7 +334,11 @@ int main(void)
 			  counter2 = 0;
 		  }
 		  else if(counter2 > 15){
-			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+			  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+			  HAL_Delay(500);
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+			  HAL_Delay(500);
 		  }
 		  else if(checkMovment()){
 			  if(counter2 == 0){
@@ -347,6 +351,7 @@ int main(void)
 		  }
 	  }
 	  else{
+		  counter2 = 0;
 		  if(finalZAccValueWithOffset < 100000){
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
 		  }
@@ -645,11 +650,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	  if(checkKey(receiveUARTData, UARTDataKey)){
 		  if(!lockedDevice){
 			  lockedDevice = 1;
-			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+			  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+			  //HAL_Delay(1);
+			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 		  }
 		  else{
 			  lockedDevice = 0;
-			  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+			  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+			  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
 		  }
 
 	  }
@@ -678,7 +687,7 @@ int checkMovment()
 	refYAccValueWithOffset = finalYAccValueWithOffset;
 	refZAccValueWithOffset = finalZAccValueWithOffset;
 
-	if(xDiff > 200 || yDiff > 200 || zDiff > 200){
+	if(xDiff > 400 || yDiff > 400 || zDiff > 400){
 		return 1;
 	}
 	else{
