@@ -79,7 +79,7 @@ uint8_t lockedDevice = 0;
 
 uint8_t dataReceiveI2cBuffer 	= 0;	// MP9250
 uint8_t receiveUARTData[30] 	= {0};	// RFID
-uint8_t UARTDataKey[30] 		= {2,51,55,48,48,50,70,66,55,67,53,54,65,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};	// RFID KEY
+uint8_t UARTDataKey[30] 		= {2,51,66,48,48,50,54,48,66,53,57,52,70,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};	// RFID KEY
 uint8_t receiveUART2Data[150] 	= {0};	// GSM/GNSS
 
 /* USER CODE END PV */
@@ -117,11 +117,12 @@ int main(void)
 	uint8_t WHO_AM_I 				= 0x75;
 	uint8_t LP_ACCEL_ODR[2] 		= {0x1e, 0b00001000}; 	// 8 = output frequency 62.50Hz
 	uint8_t ACCEL_CONFIG[2] 		= {0x1c, 0x0}; 			// 0x0 for 2g, 0x8 for 4g, 0x10 for 8g,0x18 for 16g
-	uint8_t INT_ENABLE[2] 			= {0x38, 0x00};			// enable motion interrupt
+	uint8_t INT_ENABLE[2] 			= {0x38, 0x40};			// enable motion interrupt
 	uint8_t MOT_DETECT_CTRL[2] 		= {0x69, 0b11000000};	// enable hardware intelligence
 	uint8_t WOM_THR[2]				= {0x1f, 0x7f};			// threshold
 	uint8_t maskLP_ACCEL_ODR[2] 	= {0x1e, 0b00000100}; 	// frequency of wake-up
 	uint8_t PWR_MGMT_1_new[2] 		= {0x6b, 0b00100000};	// cycle mode
+	uint8_t INT_PIN_CFG[2] 			= {0x3a, 0b00110000};//3a
 	uint8_t ACCEL_XOUT_L 			= 0x3c;
 	uint8_t ACCEL_XOUT_H 			= 0x3b;
 	uint8_t ACCEL_YOUT_L 			= 0x3e;
