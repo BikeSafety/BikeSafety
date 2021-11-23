@@ -320,63 +320,12 @@ int main(void)
 		  HAL_ResumeTick();
 	  }
 
-	  /*
-
-	  //=========================RFID
-	  //uartStatus = HAL_UART_Receive(&huart1, receiveUARTData, 14, 100);
-	  //=========================RFID
-
-
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);	// ONBOARD LED
-	  HAL_Delay(500);
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-	  HAL_Delay(500);
-
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);	// EXTERNAL LED
-	  HAL_Delay(500);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-	  HAL_Delay(500);*/
 
 	  //=========================GNSS
 	  latlongstructinstance = getLatLongInMeters();
 	  offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, notInitialValue);
 	  //prevlatlongstructinstance = latlongstructinstance;
 	  //=========================GNSS
-
-	  //=========================Debug UART1 (Only debug use)
-
-	  //=========================Debug UART1 (Only debug use)
-
-	  if(lockedDevice != 1){
-		  if(clockCykles > 33 && counter2 < 15){
-			  clockCykles = 0;
-			  counter2 = 0;
-		  }
-		  else if(counter2 > 15){
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);	// EXTERNAL LED
-			  HAL_Delay(500);
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-			  HAL_Delay(500);
-		  }
-		  else if(checkMovment()){
-			  if(counter2 == 0){
-				  timerVal = __HAL_TIM_GET_COUNTER(&htim16);
-				  counter2++;
-			  }
-			  else{
-				  counter2++;
-			  }
-		  }
-	  }
-	  else{
-		  counter2 = 0;
-		  if(finalZAccValueWithOffset < 100000){
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-		  }
-		  else{
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-		  }
-	  }
 
 	  counter = counter +1;
     /* USER CODE END WHILE */
