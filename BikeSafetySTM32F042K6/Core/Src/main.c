@@ -134,7 +134,7 @@ static void MX_TIM16_Init(void);
 struct LatLongStruct latlongstructinstance; 		// TODO
 struct LatLongStruct prevlatlongstructinstance; 	// TODO
 struct OffsetFromHome offsetfromhome;				// TODO
-char notInitialValue = 0;							// TODO
+char homeLocked = 0;							// TODO
 struct GsmStruct gsmstruct;							// TODO
 
 /* USER CODE END PFP */
@@ -224,10 +224,10 @@ int main(void)
 
   gnssInit();
   latlongstructinstance = getLatLongInMeters();
-  offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, notInitialValue);
-  notInitialValue = 1;
+  //offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, homeLocked);
+  //homeLocked = 1;
   prevlatlongstructinstance = latlongstructinstance;
-  HAL_Delay(1000);
+  //HAL_Delay(1000);
 
 
   gsmInit();											// GSM initializer
@@ -246,7 +246,6 @@ int main(void)
   {
 
 	  //i2cState = HAL_I2C_GetState(&hi2c1);
-
 	  if(lockedDevice == 1 || counter2 != 0){
 		  i2cState = HAL_I2C_GetState(&hi2c1);
 	  //=========================MPU9250
@@ -285,7 +284,9 @@ int main(void)
 		  }
 	  }
 
-	  else if(counter2 != 0){
+	  /*else if(counter2 != 0){
+		  homeLocked = 1;
+		  latlongstructinstance = getLatLongInMeters();
 		  if(__HAL_TIM_GET_COUNTER(&htim16) < timerVal){
 			  clockCykles++;
 			  timerVal = __HAL_TIM_GET_COUNTER(&htim16);
@@ -305,11 +306,11 @@ int main(void)
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 			  HAL_Delay(500);
 		  }
-		  else if(checkMovment() == 1){
+		  else if(getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, homeLocked) > 200){
 			  counter2++;
 		  }
 
-	  }
+	  }*/
 
 	  else{
 		HAL_SuspendTick();
@@ -322,8 +323,8 @@ int main(void)
 
 
 	  //=========================GNSS
-	  latlongstructinstance = getLatLongInMeters();
-	  offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, notInitialValue);
+	  //latlongstructinstance = getLatLongInMeters();
+	  //offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, homeLocked);
 	  //prevlatlongstructinstance = latlongstructinstance;
 	  //=========================GNSS
 
@@ -619,11 +620,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if(GPIO_Pin == GPIO_PIN_4 && lockedDevice == 0) // If The INT Source Is EXTI Line4 (A4 Pin)
     {
-    	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3); // Toggle The ONBOARD LED
-    	timerVal = __HAL_TIM_GET_COUNTER(&htim16);
-    	counter2++;
-    	HAL_PWR_DisableSleepOnExit ();
+    	//HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3); // Toggle The ONBOARD LED
+    	//timerVal = __HAL_TIM_GET_COUNTER(&htim16);
+    	//counter2++;
+    	//HAL_PWR_DisableSleepOnExit ();
     	//uint8_t INT_ENABLE[2] 			= {0x38, 0x00};
+    	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+    	latlongstructinstance = getLatLongInMeters();
+    	homeLocked = 1;
+    	offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, homeLocked);
+    	if(offsetfromhome.offsetLatInMeters > 150 || offsetfromhome.offsetLongInMeters > 150){
+    		//sendGsmMessage(gsmstruct);
+    		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+    	}
+    	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
     }
 
 }
@@ -641,10 +651,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			  lockedDevice = 1;
 			  counter2 = 0;
 			  HAL_PWR_DisableSleepOnExit ();
+			  homeLocked = 0;
 			  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
 		  }
 		  else{
 			  lockedDevice = 0;
+			  homeLocked = 1;
+			  getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, homeLocked);
+			  prevlatlongstructinstance = latlongstructinstance;
 			  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
 		  }
 
@@ -772,14 +786,14 @@ struct LatLongStruct getLatLongInMeters(void){
 	return latlongstruct;
 }
 
-struct OffsetFromHome getOffsetFromHome(struct LatLongStruct latlongstruct, struct LatLongStruct prevlatlongstruct, char notInitialValue){
+struct OffsetFromHome getOffsetFromHome(struct LatLongStruct latlongstruct, struct LatLongStruct prevlatlongstruct, char homeLocked){
 	enterToFunction = 2; // TODO delete
 	struct OffsetFromHome offsetfromhome;
-	if(notInitialValue == 0){
+	if(homeLocked == 0){
 		offsetfromhome.offsetLatInMeters = 0.0;
 		offsetfromhome.offsetLongInMeters = 0.0;
 	}
-	if(notInitialValue == 1){
+	if(homeLocked == 1){
 		offsetfromhome.offsetLatInMeters = abs(latlongstruct.latInMeters - prevlatlongstruct.latInMeters);
 		offsetfromhome.offsetLongInMeters = abs(latlongstruct.longInMeters - prevlatlongstruct.longInMeters);
 	}
