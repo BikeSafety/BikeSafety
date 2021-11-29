@@ -113,11 +113,13 @@ int main(void)
 	// Registers
 	uint8_t IMUDevAddr 				= 0xd0;
 	uint8_t PWR_MGMT_1[2] 			= {0x6b, 0b00100000};	// or 4
-	uint8_t PWR_MGMT_2[2] 			= {0x6c, 0b00000000};	// 0 to enable all or 255 to disable all
+	//uint8_t PWR_MGMT_2[2] 			= {0x6c, 0b00000000};	// 0 to enable all or 255 to disable all
+	uint8_t PWR_MGMT_2[2] 			= {0x6c, 0b00000111};	// 0 to enable all or 255 to disable all
 	uint8_t WHO_AM_I 				= 0x75;
 	uint8_t LP_ACCEL_ODR[2] 		= {0x1e, 0b00001000}; 	// 8 = output frequency 62.50Hz
 	uint8_t ACCEL_CONFIG[2] 		= {0x1c, 0x0}; 			// 0x0 for 2g, 0x8 for 4g, 0x10 for 8g,0x18 for 16g
-	uint8_t INT_ENABLE[2] 			= {0x38, 0x00};			// enable motion interrupt
+	uint8_t ACCEL_CONFIG_2[2] 		= {0x1d, 0b00000101};			//1d
+	uint8_t INT_ENABLE[2] 			= {0x38, 0x40};			// enable motion interrupt
 	uint8_t MOT_DETECT_CTRL[2] 		= {0x69, 0b11000000};	// enable hardware intelligence
 	uint8_t WOM_THR[2]				= {0x1f, 0x7f};			// threshold
 	uint8_t maskLP_ACCEL_ODR[2] 	= {0x1e, 0b00000100}; 	// frequency of wake-up
