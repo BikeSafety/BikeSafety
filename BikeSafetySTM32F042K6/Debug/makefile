@@ -61,8 +61,8 @@ all: main-build
 main-build: BikeSafetySTM32F042K6.elf secondary-outputs
 
 # Tool invocations
-BikeSafetySTM32F042K6.elf: $(OBJS) $(USER_OBJS) C:\Users\simon\git\BikeSafety\BikeSafetySTM32F042K6\STM32F042K6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "BikeSafetySTM32F042K6.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\simon\git\BikeSafety\BikeSafetySTM32F042K6\STM32F042K6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BikeSafetySTM32F042K6.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+BikeSafetySTM32F042K6.elf: $(OBJS) $(USER_OBJS) C:\Users\simon\Gitfolders\BikeSafety\BikeSafetySTM32F042K6\STM32F042K6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "BikeSafetySTM32F042K6.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\simon\Gitfolders\BikeSafety\BikeSafetySTM32F042K6\STM32F042K6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BikeSafetySTM32F042K6.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

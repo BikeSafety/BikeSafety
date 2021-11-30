@@ -76,6 +76,8 @@ uint8_t ACCEL_YOUT_H 			= 0;
 uint8_t ACCEL_ZOUT_L 			= 0;
 uint8_t ACCEL_ZOUT_H 			= 0;
 
+
+uint8_t interruptFlag 	= 0;
 uint32_t timerVal 	= 0;
 uint8_t clockCykles = 0;
 
@@ -198,6 +200,7 @@ int main(void)
   //HAL_Delay(1000);
 
 
+
   gsmInit();											// GSM initializer
   gsmstruct.phoneNumber = "+35844350xxxx";				// Enter number in this format
   gsmstruct.message		= "Sent from Otakaari 5tryreyre";	// Enter message to be send in this format
@@ -242,6 +245,7 @@ int main(void)
 	  //=========================MPU9250
 	  }
 	  if(lockedDevice == 1){
+		  interruptFlag = 0;
 		  //counter = counter +1;
 		  if(finalZAccValueWithOffset < 100000){
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
@@ -251,6 +255,18 @@ int main(void)
 		  }
 	  }
 
+	  else if(interruptFlag){
+
+		  latlongstructinstance = getLatLongInMeters();
+		  homeLocked = 1;
+		  offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, homeLocked);
+		  if(offsetfromhome.offsetLatInMeters > 150 || offsetfromhome.offsetLongInMeters > 150){
+			  //sendGsmMessage(gsmstruct);
+			  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+		  }
+		  HAL_Delay(1000);
+
+	  }
 	  /*else if(counter2 != 0){
 		  homeLocked = 1;
 		  latlongstructinstance = getLatLongInMeters();
@@ -593,14 +609,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     	//HAL_PWR_DisableSleepOnExit ();
     	//uint8_t INT_ENABLE[2] 			= {0x38, 0x00};
     	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-    	/*latlongstructinstance = getLatLongInMeters();
-    	homeLocked = 1;
-    	offsetfromhome = getOffsetFromHome(latlongstructinstance, prevlatlongstructinstance, homeLocked);
-    	if(offsetfromhome.offsetLatInMeters > 150 || offsetfromhome.offsetLongInMeters > 150){
-    		//sendGsmMessage(gsmstruct);
-    		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
-    	}*/
+    	interruptFlag = 1;
     	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+    	HAL_PWR_DisableSleepOnExit ();
     }
 
 }
@@ -772,21 +783,24 @@ char mpuInit(void){
 	//=========================MPU9250
 	// Registers
 	IMUDevAddr 						= 0xd0;
-	/*uint8_t PWR_MGMT_1[2] 			= {0x6b, 0b00100000};	// or 4
+	uint8_t PWR_MGMT_1[2] 			= {0x6b, 0b00100000};	// or 4
+	//uint8_t PWR_MGMT_1[2] 			= {0x6b, 0b00000000};
 	//uint8_t PWR_MGMT_2[2] 			= {0x6c, 0b00000000};	// 0 to enable all or 255 to disable all
 	uint8_t PWR_MGMT_2[2] 			= {0x6c, 0b00000111};	//
 	uint8_t WHO_AM_I 				= 0x75;
 	uint8_t LP_ACCEL_ODR[2] 		= {0x1e, 0b00001000}; 	// 8 = output frequency 62.50Hz
 	uint8_t ACCEL_CONFIG[2] 		= {0x1c, 0x0}; 			// 0x0 for 2g, 0x8 for 4g, 0x10 for 8g,0x18 for 16g
-	uint8_t ACCEL_CONFIG_2[2] 		= {0x1d, 0b00000101};	//1d
+	uint8_t ACCEL_CONFIG_2[2] 		= {0x1d, 0b00001101};	//1d
 	uint8_t INT_ENABLE[2] 			= {0x38, 0x40};			// enable motion interrupt
 	uint8_t MOT_DETECT_CTRL[2] 		= {0x69, 0b11000000};	// enable hardware intelligence
-	uint8_t WOM_THR[2]				= {0x1f, 0x7f};			// threshold
+	uint8_t WOM_THR[2]				= {0x1f, 0x03};			// threshold
 	uint8_t maskLP_ACCEL_ODR[2] 	= {0x1e, 0b00000100}; 	// frequency of wake-up
 	uint8_t PWR_MGMT_1_new[2] 		= {0x6b, 0b00100000};	// cycle mode
-	uint8_t INT_PIN_CFG[2] 			= {0x37, 0b00110000};	//3a*/
+	//uint8_t PWR_MGMT_1_new[2] 		= {0x6b, 0b00000000};	// cycle mode
+	uint8_t INT_PIN_CFG[2] 			= {0x37, 0b01001100};	//37
+	//uint8_t INT_PIN_CFG[2] 			= {0x37, 0b00110000};	//37
 
-	uint8_t ACCEL_CONFIG[2] 		= {0x1c, 0x0}; 			// 0x0 for 2g, 0x8 for 4g, 0x10 for 8g,0x18 for 16g
+	/*uint8_t ACCEL_CONFIG[2] 		= {0x1c, 0x0}; 			// 0x0 for 2g, 0x8 for 4g, 0x10 for 8g,0x18 for 16g
 	uint8_t WHO_AM_I 				= 0x75;
     uint8_t PWR_MGMT_1[2] = {0x6b, 0b00000001};//6b
     uint8_t PWR_MGMT_2[2] = {0x6c, 0b00000111};//6c
@@ -796,7 +810,7 @@ char mpuInit(void){
     uint8_t WOM_THR[2]={0x1f, 0x7f};//1f
     uint8_t LP_ACCEL_ODR[2] = {0x1e, 0b00000100};//1e
     uint8_t PWR_MGMT_1_new[2] = {0x6b, 0b00100000};//6b
-    uint8_t INT_PIN_CFG[2] = {0x37, 0b00110000};//3a
+    uint8_t INT_PIN_CFG[2] = {0x37, 0b00110000};//3a*/
 
 	ACCEL_XOUT_L 			= 0x3c;
 	ACCEL_XOUT_H 			= 0x3b;
@@ -823,6 +837,12 @@ char mpuInit(void){
 	HAL_Delay(10);
 	i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, ACCEL_CONFIG, sizeof(ACCEL_CONFIG), 10);
 	i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 10);
+
+	HAL_Delay(10);
+		i2cStatus = HAL_I2C_Master_Transmit(&hi2c1, IMUDevAddr, 0x3a, 1, 10);
+		i2cStatus = HAL_I2C_Master_Receive(&hi2c1, IMUDevAddr, &dataReceiveI2cBuffer, 1, 10);
+
+	//	HAL_Delay(100000);
 //=========================MPU9250
 	uartStatus = HAL_UART_Receive_IT(&huart1, receiveUARTData, 14);
 	initStatus = 1;
